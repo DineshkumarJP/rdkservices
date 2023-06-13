@@ -29,7 +29,7 @@ public:
   /**
    *
    */
-  RemotePlugin();
+  RemotePlugin(const RustAdapter::Config &conf);
 
   /**
    *
@@ -42,7 +42,7 @@ public:
   /**
    * IPlugin::Initialize
    */
-  const std::string Initialize(PluginHost::IShell *shell) override;
+  const string Initialize(PluginHost::IShell *shell) override;
 
   /**
    * IPlugin::Deinitialize
@@ -52,7 +52,7 @@ public:
   /**
    * IPlugin Information
    */
-  std::string Information() const override;
+  string Information() const override;
 
   /**
    * IDispatcher -> IUknown -> IReferenceCounted::AddRef
@@ -90,31 +90,35 @@ public:
   /**
    * WPEFramework::PluginHost::IDispatcher::Invoke
    */
+#if JSON_RPC_CONTEXT   
   Core::ProxyType<Core::JSONRPC::Message> Invoke(
     const Core::JSONRPC::Context& context,
     const Core::JSONRPC::Message& message) override;
-
+#else
+  Core::ProxyType<Core::JSONRPC::Message> Invoke(
+    const string& token, const uint32_t channelId, const Core::JSONRPC::Message& req) override;
+#endif
   /**
    *
    */
-  Core::ProxyType<Core::JSON::IElement> Inbound(const std::string &identifier) override;
+  Core::ProxyType<Core::JSON::IElement> Inbound(const string &identifier) override;
   Core::ProxyType<Core::JSON::IElement> Inbound(const uint32_t id,
     const Core::ProxyType<Core::JSON::IElement> &element) override;
 
   void onRead(const Response& rsp);
 private:
-  static int LaunchRemoteProcess(const string& rust_shared_lib, const string& host_ip, int port);
+  int LaunchRemoteProcess(const string& rust_shared_lib, const string& host_ip, int port);
+  void SendTo(uint32_t channel_id, const char *json);
 
   // we keep a pointer to this to allow rust code to callback into
   // the Adapter and send messages/events asynchronously
   // XXX: We could also capture a reference to the channel during
   // attach/detach, but that may require API changes to Thunder/internal
   PluginHost::IShell *m_service;
-
   int m_remotePid;
   SocketServer m_stream;
-private:
-  void SendTo(uint32_t channel_id, const char *json);
+  RustAdapter::Config m_config;
+  std::string m_auth_token;
 };
 
 } } }

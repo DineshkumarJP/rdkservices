@@ -98,12 +98,16 @@ TTS_Error TTSManager::setConfiguration(Configuration &configuration) {
 
     m_defaultConfiguration.setEndPoint(configuration.ttsEndPoint);
     m_defaultConfiguration.setSecureEndPoint(configuration.ttsEndPointSecured);
+    m_defaultConfiguration.setApiKey(configuration.apiKey);
     updated |= m_defaultConfiguration.setLanguage(configuration.language);
     /* Set default voice for the language only when voice is empty*/
     if(!configuration.language.empty() && configuration.voice.empty()) {
         std::vector<std::string> voices;
         listVoices(configuration.language, voices);
-        updated |= m_defaultConfiguration.setVoice(voices.front());
+        if(voices.empty())
+            TTSLOG_WARNING("voice is empty and no voices are defined for the specified language ('%s')!!!", configuration.language.c_str());
+        else
+            updated |= m_defaultConfiguration.setVoice(voices.front());
     }
     else
         updated |= m_defaultConfiguration.setVoice(configuration.voice);

@@ -27,7 +27,7 @@ public:
   /**
    *
    */
-  LocalPlugin();
+  LocalPlugin(const RustAdapter::Config &config);
 
   /**
    *
@@ -40,7 +40,7 @@ public:
   /**
    * IPlugin::Initialize
    */
-  const std::string Initialize(PluginHost::IShell *shell) override;
+  const string Initialize(PluginHost::IShell *shell) override;
 
   /**
    * IPlugin::Deinitialize
@@ -50,7 +50,7 @@ public:
   /**
    * IPlugin Information
    */
-  std::string Information() const override;
+  string Information() const override;
 
   /**
    * IDispatcher -> IUknown -> IReferenceCounted::AddRef
@@ -88,21 +88,25 @@ public:
   /**
    * WPEFramework::PluginHost::IDispatcher::Invoke
    */
+#if JSON_RPC_CONTEXT
   Core::ProxyType<Core::JSONRPC::Message> Invoke(
     const Core::JSONRPC::Context& context,
     const Core::JSONRPC::Message& message) override;
-
+#else
+  Core::ProxyType<Core::JSONRPC::Message> Invoke(
+    const string& token, const uint32_t channelId, const Core::JSONRPC::Message& req) override;
+#endif
   /**
    *
    */
-  Core::ProxyType<Core::JSON::IElement> Inbound(const std::string &identifier) override;
+  Core::ProxyType<Core::JSON::IElement> Inbound(const string &identifier) override;
   Core::ProxyType<Core::JSON::IElement> Inbound(const uint32_t id,
     const Core::ProxyType<Core::JSON::IElement> &element) override;
 
 private:
-  using RustPlugin_SendTo = void (*)(uint32_t, const char *, Rust::PluginContext *);
-  using RustPlugin_Create = Rust::Plugin *(*)(const char *name, RustPlugin_SendTo send_to, Rust::PluginContext *,
-    void *);
+  using RustPlugin_SendTo = void (*)(uint32_t, const char *, uint32_t ctx_id);
+  using RustPlugin_Create = Rust::Plugin *(*)(const char *name, RustPlugin_SendTo send_to,
+    uint32_t plugin_ctx_id, const char *jwt, void *);
   using RustPlugin_Destroy = void (*)(Rust::Plugin *p);
   using RustPlugin_Init = void (*)(Rust::Plugin *p, const char *json);
   using RustPlugin_Invoke = void (*)(Rust::Plugin *p, const char *json_req,
@@ -132,6 +136,8 @@ private:
   // XXX: We could also capture a reference to the channel during
   // attach/detach, but that may require API changes to Thunder/internal
   PluginHost::IShell *m_service;
+  RustAdapter::Config m_config;
+  std::string m_auth_token;
 
 private:
   void SendTo(uint32_t channel_id, const char *json);

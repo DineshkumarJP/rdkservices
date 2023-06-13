@@ -36,18 +36,39 @@ public:
   class Config : public Core::JSON::Container
   {
   private:
-    Config(const Config&);
     Config& operator=(const Config&);
   public:
+    Config(const Config &rhs)
+    {
+      Add(_T("outofprocess"), &OutOfProcess);
+      Add(_T("address"), &Address);
+      Add(_T("port"), &Port);
+      Add(_T("autoexec"), &AutoExec);
+      Add(_T("libname"), &LibName);
+      OutOfProcess = rhs.OutOfProcess;;
+      Address = rhs.Address;
+      Port = rhs.Port;
+      AutoExec = rhs.AutoExec;
+      LibName = rhs.LibName;
+    }
+
     Config() : Core::JSON::Container(), OutOfProcess(true)
     {
       Add(_T("outofprocess"), &OutOfProcess);
+      Add(_T("address"), &Address);
+      Add(_T("port"), &Port);
+      Add(_T("autoexec"), &AutoExec);
+      Add(_T("libname"), &LibName);
     }
     ~Config()
     {
     }
   public:
     Core::JSON::Boolean OutOfProcess;
+    Core::JSON::String Address;
+    Core::JSON::DecUInt16 Port;
+    Core::JSON::Boolean AutoExec;
+    Core::JSON::String LibName;
   };
 
   /**
@@ -66,7 +87,7 @@ public:
   /**
    * IPlugin::Initialize
    */
-  const std::string Initialize(PluginHost::IShell *shell) override;
+  const string Initialize(PluginHost::IShell *shell) override;
 
   /**
    * IPlugin::Deinitialize
@@ -76,7 +97,7 @@ public:
   /**
    * IPlugin Information
    */
-  std::string Information() const override;
+  string Information() const override;
 
   /**
    * IDispatcher -> IUknown -> IReferenceCounted::AddRef
@@ -107,14 +128,19 @@ public:
   /**
    * WPEFramework::PluginHost::IDispatcher::Invoke
    */
+#if JSON_RPC_CONTEXT
   Core::ProxyType<Core::JSONRPC::Message> Invoke(
     const Core::JSONRPC::Context& context,
     const Core::JSONRPC::Message& message) override;
+#else 
+  Core::ProxyType<Core::JSONRPC::Message> Invoke(
+    const string& token, const uint32_t channelId, const Core::JSONRPC::Message& message) override;
+#endif
 
   /**
    *
    */
-  Core::ProxyType<Core::JSON::IElement> Inbound(const std::string &identifier) override;
+  Core::ProxyType<Core::JSON::IElement> Inbound(const string &identifier) override;
   Core::ProxyType<Core::JSON::IElement> Inbound(const uint32_t id,
     const Core::ProxyType<Core::JSON::IElement> &element) override;
 
@@ -124,6 +150,12 @@ public:
   INTERFACE_ENTRY(PluginHost::IDispatcher)
   INTERFACE_ENTRY(PluginHost::IWebSocket)
   END_INTERFACE_MAP
+
+  static std::string GetLibraryPathOrName(
+    const std::string& libname,
+    const std::string& callsign);
+
+  static std::string GetAuthToken(const std::string &callsign);
 
 private:
   std::unique_ptr<Rust::IPlugin> m_impl;
